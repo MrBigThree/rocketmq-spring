@@ -18,10 +18,10 @@
 package org.apache.rocketmq.spring.autoconfigure;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.rocketmq.client.producer.TransactionMQProducer;
 import org.apache.rocketmq.spring.annotation.RocketMQTransactionListener;
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionListener;
@@ -30,6 +30,7 @@ import org.apache.rocketmq.spring.support.RocketMQUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.AopProxyUtils;
+import org.springframework.aop.scope.ScopedProxyUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
@@ -49,11 +50,11 @@ public class RocketMQTransactionConfiguration implements ApplicationContextAware
     }
 
     @Override public void afterSingletonsInstantiated() {
-        Map<String, Object> beans = this.applicationContext.getBeansWithAnnotation(RocketMQTransactionListener.class);
+        Map<String, Object> beans = this.applicationContext.getBeansWithAnnotation(RocketMQTransactionListener.class)
+            .entrySet().stream().filter(entry -> !ScopedProxyUtils.isScopedTarget(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        if (Objects.nonNull(beans)) {
-            beans.forEach(this::registerTransactionListener);
-        }
+        beans.forEach(this::registerTransactionListener);
     }
 
     private void registerTransactionListener(String beanName, Object bean) {

@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.MessageQueueSelector;
@@ -84,6 +86,10 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
 
     public void setMessageQueueSelector(MessageQueueSelector messageQueueSelector) {
         this.messageQueueSelector = messageQueueSelector;
+    }
+
+    public void setAsyncSenderExecutor(ExecutorService asyncSenderExecutor) {
+        this.producer.setAsyncSenderExecutor(asyncSenderExecutor);
     }
 
     /**
@@ -464,6 +470,17 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
      */
     public SendResult syncSend(String destination, Message<?> message, long timeout) {
         return syncSend(destination, message, timeout, 0);
+    }
+
+    /**
+     * syncSend batch messages
+     *
+     * @param destination formats: `topicName:tags`
+     * @param messages Collection of {@link org.springframework.messaging.Message}
+     * @return {@link SendResult}
+     */
+    public <T extends Message> SendResult syncSend(String destination, Collection<T> messages) {
+        return syncSend(destination, messages, producer.getSendMsgTimeout());
     }
 
     /**

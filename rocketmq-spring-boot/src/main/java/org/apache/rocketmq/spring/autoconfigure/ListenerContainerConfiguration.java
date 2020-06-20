@@ -19,8 +19,8 @@ package org.apache.rocketmq.spring.autoconfigure;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.apache.rocketmq.client.AccessChannel;
 import org.apache.rocketmq.spring.annotation.ConsumeMode;
 import org.apache.rocketmq.spring.annotation.MessageModel;
@@ -32,6 +32,7 @@ import org.apache.rocketmq.spring.support.RocketMQMessageConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.AopProxyUtils;
+import org.springframework.aop.scope.ScopedProxyUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.support.BeanDefinitionValidationException;
@@ -71,11 +72,11 @@ public class ListenerContainerConfiguration implements ApplicationContextAware, 
 
     @Override
     public void afterSingletonsInstantiated() {
-        Map<String, Object> beans = this.applicationContext.getBeansWithAnnotation(RocketMQMessageListener.class);
+        Map<String, Object> beans = this.applicationContext.getBeansWithAnnotation(RocketMQMessageListener.class)
+            .entrySet().stream().filter(entry -> !ScopedProxyUtils.isScopedTarget(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        if (Objects.nonNull(beans)) {
-            beans.forEach(this::registerContainer);
-        }
+        beans.forEach(this::registerContainer);
     }
 
     private void registerContainer(String beanName, Object bean) {
@@ -151,7 +152,7 @@ public class ListenerContainerConfiguration implements ApplicationContextAware, 
             container.setRocketMQReplyListener((RocketMQReplyListener) bean);
         }
         container.setMessageConverter(rocketMQMessageConverter.getMessageConverter());
-        container.setName(name);  // REVIEW ME, use the same clientId or multiple?
+        container.setName(name);
 
         return container;
     }
